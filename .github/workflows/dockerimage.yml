@@ -12,6 +12,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@v2
+            - name: Build the Docker image
+              run: docker login docker.io
 
             -   name: Build and push docker image
                 uses: docker/build-push-action@v1
