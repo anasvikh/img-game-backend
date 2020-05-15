@@ -18,6 +18,7 @@ jobs:
                 with:
                     username: ${{ secrets.DOCKER_USERNAME }}
                     password: ${{ secrets.DOCKER_PASSWORD }}
-                    dockerfile: ImgGameBackend/Dockerfile
+                    path: ./ImgGameBackend
+                    dockerfile: Dockerfile
                     repository: avikhlyaeva/img-game-backend
                     tags: latest
