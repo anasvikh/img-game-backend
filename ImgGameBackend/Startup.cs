@@ -28,8 +28,11 @@ namespace Imaginarium
 
             services.AddLogging(b => b.AddSerilog());
 
-            services.AddEntityFrameworkNpgsql().AddDbContext<ImaginariumContext>(opt =>
-                opt.UseNpgsql("Server=3.22.164.241;Port=56963;Database=Imaginarium;User Id=imggame;Password=Z%Z^5A3Rntc!LJFPM3mG;"));
+            services.AddDbContext<ImaginariumContext>(options =>
+            {
+                options.UseNpgsql(Configuration["Data:DefaultConnection:ConnectionString"],
+                    b => b.MigrationsAssembly(typeof(ImaginariumContext).Assembly.GetName().Name));
+            });
 
             services.AddSignalR();
         }
