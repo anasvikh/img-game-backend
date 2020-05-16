@@ -9,6 +9,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 
 namespace Imaginarium
 {
@@ -38,7 +42,7 @@ namespace Imaginarium
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ImaginariumContext context)
         {
             app.UseCors(options => options
                 .AllowAnyHeader()
@@ -70,6 +74,34 @@ namespace Imaginarium
             {
                 routes.MapHub<GameHub>("/game");
             });
+
+            var emptyCardSets = context.CardSets
+                .Where(x => x.Cards.Count() == 0)
+                .ToList();
+
+            emptyCardSets.ForEach(set =>
+            {
+                var setFolder = $"{env.WebRootPath}/cardSets/{set.NameEng}";
+
+                var images = Directory.GetFiles(setFolder, "*.*", SearchOption.AllDirectories)
+                .ToList();
+
+                images.ForEach(image =>
+                {
+                    var fileName =  Path.GetFileName(image);
+                    var numberInSet = Convert.ToInt32(fileName.Replace(".jpg", ""));
+                    var newCard = new Card()
+                    {
+                        NumberInSet = numberInSet,
+                        Src = $@"/cardSets/{set.NameEng}/{fileName}",
+                        CardSetId = set.Id
+                    };
+                    context.Cards.Add(newCard);
+                });
+
+                context.SaveChanges();
+            });
+
         }
     }
 }

@@ -27,6 +27,13 @@ namespace Imaginarium.Models
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            //modelBuilder.Entity<CardSet>()
+            //    .HasData(new CardSet {
+            //        NameEng = "classic",
+            //        NameRus = "Классический",
+            //    });
+
+
             modelBuilder.Entity<CardSetGame>()
                 .HasKey(t => new { t.CardSetId, t.GameId });
 
