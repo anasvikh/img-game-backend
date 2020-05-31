@@ -10,6 +10,7 @@ namespace Imaginarium.Models
         public int Id { get; set; }
         public string NameEng { get; set; }
         public string NameRus { get; set; }
+        public bool IsAvailable { get; set; }
 
         public virtual ICollection<Card> Cards { get; set; }
 

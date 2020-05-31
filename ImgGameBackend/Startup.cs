@@ -44,6 +44,12 @@ namespace Imaginarium
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ImaginariumContext context)
         {
+            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                var dbContext = serviceScope.ServiceProvider.GetRequiredService<ImaginariumContext>();
+                dbContext.Database.Migrate();
+            }
+
             app.UseCors(options => options
                 .AllowAnyHeader()
                 .AllowAnyMethod()

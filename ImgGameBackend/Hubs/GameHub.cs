@@ -62,13 +62,23 @@ namespace Imaginarium.Hubs
             await Clients.Caller.SendAsync("checkActiveGame", gameId, username, isGameActive);
         }
 
-        public async Task GetCardSets()
+        public async Task GetCardSets(bool isSuperUser)
         {
-            var result = await _dbContext.CardSets
-                    .Select(x => new { x.Id, Value = x.NameRus })
+            var cardSets = await _dbContext.CardSets
                     .ToListAsync();
 
-                await Clients.Caller.SendAsync("GetCardSets", result);
+            if (!isSuperUser)
+            {
+                cardSets = cardSets
+                    .Where(x => x.IsAvailable)
+                    .ToList();
+            }
+
+            var result = cardSets
+                    .Select(x => new { x.Id, Value = x.NameRus })
+                    .ToList();
+
+            await Clients.Caller.SendAsync("GetCardSets", result);
         }
 
         public async Task CreateGame(string username, List<int> selectedCardSet)
