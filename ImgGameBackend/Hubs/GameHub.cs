@@ -174,6 +174,20 @@ namespace Imaginarium.Hubs
             await Clients.Group(game.Id.ToString()).SendAsync("StartGame", game.Id, message);
         }
 
+        public async Task GetUsers(int gameId)
+        {
+
+            var wx = Context.ConnectionId;
+            var usersList = await _dbContext.Users
+                .Where(x => x.GameId == gameId)
+                .Select(x => x.Name)
+                .ToListAsync();
+
+
+
+            await Clients.Group(gameId.ToString()).SendAsync("GetUsers", usersList);
+        }
+
         public async Task SelectCard(string username, int gameId, int playCardId)
         {
             var game = await _dbContext.Games
