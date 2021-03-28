@@ -11,6 +11,7 @@ namespace Imaginarium.Models
         public int Id { get; set; }
         public StatusType Status { get; set; } = StatusType.New;
         public int? Round { get; set; }
+        public RoundType RoundType { get; set; }
         public int VotedOnRoundCount { get; set; }
         public List<User> Users { get; set; } = new List<User>();
 
@@ -40,5 +41,11 @@ namespace Imaginarium.Models
         New,
         Active,
         Ended
+    }
+
+    public enum RoundType
+    {
+        Choice,
+        Guessing,
     }
 }

@@ -183,8 +183,6 @@ namespace Imaginarium.Hubs
                 .Select(x => x.Name)
                 .ToListAsync();
 
-
-
             await Clients.Group(gameId.ToString()).SendAsync("GetUsers", usersList);
         }
 
@@ -206,7 +204,7 @@ namespace Imaginarium.Hubs
                 .Where(x => x.Round == game.Round && x.GameId == gameId)
                 .ToListAsync();
 
-            var isAllCardsSended = game.Users.Count == roundCards.Count;
+            var isAllCardsSended = game.Users.Count <= roundCards.Count; // todo: test <=
 
             await Clients.Group(game.Id.ToString()).SendAsync("SelectCard", isAllCardsSended, username);
         }
@@ -260,7 +258,7 @@ namespace Imaginarium.Hubs
             await Clients.Group(game.Id.ToString()).SendAsync("VoteForCard", isAllCardsSended, username, null);
         }
 
-        public async Task GetRoundResults(string username, int gameId)
+        public async Task GetRoundResults(int gameId)
         {
             var game = await _dbContext.Games
                 .Include(x => x.PlayCards)
@@ -356,6 +354,10 @@ namespace Imaginarium.Hubs
                 result = await GetRoundCards(gameId);
             }
 
+            game.RoundType = type;
+            _dbContext.Games.Update(game);
+            await _dbContext.SaveChangesAsync();
+
             await Clients.Caller.SendAsync("GetCards", result, game.ActivePlayerName);
         }
 
@@ -369,6 +371,9 @@ namespace Imaginarium.Hubs
             var userForRemove = game.Users
                 .FirstOrDefault(x => x.Name == username);
 
+            var needNewRound = false;
+            var needRoundResults = false;
+
             if (userForRemove != null)
             {
                 game.Users.Remove(userForRemove);
@@ -378,6 +383,60 @@ namespace Imaginarium.Hubs
             {
                 game.Status = StatusType.Ended;
             }
+            else if (game.RoundType == RoundType.Guessing)
+            {
+                needRoundResults = true;
+                // ведущий - раунд продолжается как обычно, голос ведущего добавляется, если еще не был учтен
+                // не ведущий - раунд продолжается как обычно, голос игрока отдается за свою карточку
+                var playCard = await _dbContext.PlayCards
+                    .FirstOrDefaultAsync(x => x.GameId == gameId && x.Username == userForRemove.Name);
+
+                if (playCard != null && !playCard.VotedUsers.Any(u => u == userForRemove.Name))
+                {
+                    playCard.VotedUsers.Add(userForRemove.Name);
+                    _dbContext.PlayCards.Update(playCard);
+
+                    game.VotedOnRoundCount++;
+                    _dbContext.Games.Update(game);
+
+                    await _dbContext.SaveChangesAsync();
+                }
+            }
+            else if (game.RoundType == RoundType.Choice)
+            {
+                if (game.ActivePlayerName == userForRemove.Name)
+                {
+                    // ведущий - сбрасываем раунд, карточки возвращаются к игрокам
+                    needNewRound = true;
+                    var roundPlayCards = _dbContext.PlayCards
+                        .Where(c => c.GameId == game.Id && c.Round == game.Round)
+                        .ToList();
+
+                    foreach (var card in roundPlayCards)
+                    {
+                        card.Round = null;
+                        _dbContext.Entry(card).State = EntityState.Modified;
+                    }
+                    _dbContext.SaveChanges();
+
+                    var activePlayerNumber = (game.Round % game.Users.Count).Value;
+                    game.ActivePlayerName = game.Users.OrderBy(x => x.Id).ToList()[activePlayerNumber].Name;
+                }
+                else
+                {
+                    // не ведущий - карточка игрока отбрасывается, раунд продолжается
+                    var userRoundPlayCard = _dbContext.PlayCards
+                        .Where(c => c.GameId == game.Id && c.Round == game.Round)
+                        .FirstOrDefault(c => c.Username == userForRemove.Name);
+
+                    if (userRoundPlayCard != null)
+                    {
+                        userRoundPlayCard.Round = null;
+                        _dbContext.PlayCards.Update(userRoundPlayCard);
+                        await _dbContext.SaveChangesAsync();
+                    }
+                }
+            }
 
             _dbContext.Games.Update(game);
             await _dbContext.SaveChangesAsync();
@@ -385,6 +444,12 @@ namespace Imaginarium.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, game.Id.ToString());
 
             await Clients.Caller.SendAsync("LeaveGame", true);
+
+            var isAllCardsSended = game.RoundType == RoundType.Choice ?
+                game.Users.Count <= game.PlayCards.Where(c => c.Round == game.Round).Count() :
+                game.Users.Count <= game.VotedOnRoundCount;
+
+            await Clients.Group(game.Id.ToString()).SendAsync("SomeoneLeaveGame", isAllCardsSended, game.RoundType, needNewRound, needRoundResults);
         }
 
         private async Task<List<PlayCardViewModel>> GetRoundCards(int gameId)
