@@ -523,7 +523,7 @@ namespace Imaginarium.Hubs
                 .Where(x => selectedCardSetsIds.Contains(x.CardSetId) && !usedCards.Contains(x.Id))
                 .ToListAsync();
 
-            Logger.LogInformation($"Генерация карточи. unusedCard.Count: {unusedCards.Count}");
+            Logger.LogInformation($"Генерация карточки. unusedCard.Count: {unusedCards.Count} {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
 
             int index = rnd.Next(unusedCards.Count() - 1);
             var randomCard = unusedCards[index];
