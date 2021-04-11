@@ -20,18 +20,20 @@ namespace Imaginarium.Models
         public virtual ICollection<CardSetGame> CardSetGames { get; set; }
 
         public string ActivePlayerName { get; set; }
+        public string Creator { get; set; }
 
         public Game()
         {
             CardSetGames = new List<CardSetGame>();
         }
 
-        public void AddUser(string username, ChipColorEnum color)
+        public void AddUser(string username, ChipColorEnum color, int order)
         {
             Users.Add(new User()
             {
                 Name = username,
-                ChipColor = color
+                ChipId = color,
+                Order = order
             });
         }
     }
