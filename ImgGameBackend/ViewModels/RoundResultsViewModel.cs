@@ -17,6 +17,6 @@ namespace Imaginarium.ViewModels
         public string Username { get; set; }
         public int RoundPoints { get; set; }
         public int TotalPoints { get; set; }
-        public ChipColorEnum ChipColor { get; set; }
+        public ChipEnum ChipColor { get; set; }
     }
 }

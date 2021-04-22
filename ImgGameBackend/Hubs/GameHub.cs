@@ -205,6 +205,17 @@ namespace Imaginarium.Hubs
 
             var isAllCardsSended = game.Users.Count <= roundCards.Count; // todo: test <=
 
+            //if (game.ActivePlayerName == username) // голос ведущего сразу учитывается в голосовании, чтобы он мог не голосовать за свою карту (для доработки: ведущий не должен голосовать за свою карту)
+            //{
+            //    playCard.VotedUsers.Add(username);
+            //    _dbContext.PlayCards.Update(playCard);
+
+            //    game.VotedOnRoundCount++;
+            //    _dbContext.Games.Update(game);
+
+            //    await _dbContext.SaveChangesAsync();
+            //}
+
             await Clients.Group(game.Id.ToString()).SendAsync("SelectCard", isAllCardsSended, username);
         }
 
@@ -274,13 +285,22 @@ namespace Imaginarium.Hubs
                 .Where(x => x.Username == game.ActivePlayerName)
                 .FirstOrDefault();
 
+            var players = game.Users.Where(u => activePlayCard.VotedUsers.Any(v => v == u.Name))
+                .Select(x => new UserResultViewModel {
+                    Name = x.Name,
+                    ChipId = x.ChipId,
+                    IsCardOwner = activePlayCard.Username == x.Name
+                })
+                .ToList();
+
             var results = new RoundResultsViewModel()
             {
-                ActivePlayCard = new PlayCardViewModel()
+                ActivePlayCard = new PlayCardResultsViewModel()
                 {
                     Id = activePlayCard.Id,
                     NumberInSet = activePlayCard.Card.NumberInSet,
-                    Src = activePlayCard.Card.Src
+                    Src = activePlayCard.Card.Src,
+                    Players = players
                 },
                 ResultsList = new List<PlayerResults>()
             };
@@ -304,6 +324,9 @@ namespace Imaginarium.Hubs
 
             }
 
+            results.ResultsList = results.ResultsList
+                .OrderByDescending(r => r.RoundPoints)
+                .ToList();
 
             var currentRoundCards = _dbContext.PlayCards
                 .Where(x => x.Round == game.Round && x.GameId == gameId);
@@ -537,12 +560,12 @@ namespace Imaginarium.Hubs
             return newPlayCard;
         }
 
-        private ChipColorEnum GenerateChipColor(List<User> users)
+        private ChipEnum GenerateChipColor(List<User> users)
         {
             var usedColors = users.Select(x => x.ChipId).ToList();
 
-            var allColors = Enum.GetValues(typeof(ChipColorEnum)).
-                Cast<ChipColorEnum>()
+            var allColors = Enum.GetValues(typeof(ChipEnum)).
+                Cast<ChipEnum>()
                 .ToList();
 
             var unusedColors = allColors

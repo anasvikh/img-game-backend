@@ -1,7 +1,5 @@
-﻿using System;
+﻿using Imaginarium.Enums;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Imaginarium.ViewModels
 {
@@ -10,5 +8,18 @@ namespace Imaginarium.ViewModels
         public int Id { get; set; }
         public string Src { get; set; }
         public int NumberInSet { get; set; }
+    }
+
+    public class PlayCardResultsViewModel: PlayCardViewModel
+    {
+        public List<UserResultViewModel> Players { get; set; }
+        public UserResultViewModel CardOwner { get; set; }
+    }
+
+    public class UserResultViewModel
+    {
+        public string Name { get; set; }
+        public ChipEnum ChipId { get; set; }
+        public bool IsCardOwner { get; set; }
     }
 }

@@ -27,7 +27,7 @@ namespace Imaginarium.Models
             CardSetGames = new List<CardSetGame>();
         }
 
-        public void AddUser(string username, ChipColorEnum color, int order)
+        public void AddUser(string username, ChipEnum color, int order)
         {
             Users.Add(new User()
             {

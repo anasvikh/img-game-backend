@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace Imaginarium.Enums
 {
-    public enum ChipColorEnum
+    public enum ChipEnum
     {
         Blue,
         DarkBlue,
