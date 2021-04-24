@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Imaginarium.Enums;
-
-namespace Imaginarium.Models
+﻿namespace Imaginarium.Models
 {
     public class User
     {
@@ -12,7 +6,7 @@ namespace Imaginarium.Models
         public string Name { get; set; }
         public string ConnectionId { get; set; }
         public int Points { get; set; }
-        public ChipEnum ChipId { get; set; }
+        public int ChipId { get; set; }
         public int Order { get; set; }
 
         public int GameId { get; set; }

@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Imaginarium.Enums;
 
 namespace Imaginarium.Models
 {
@@ -27,7 +24,7 @@ namespace Imaginarium.Models
             CardSetGames = new List<CardSetGame>();
         }
 
-        public void AddUser(string username, ChipEnum color, int order)
+        public void AddUser(string username, int color, int order)
         {
             Users.Add(new User()
             {

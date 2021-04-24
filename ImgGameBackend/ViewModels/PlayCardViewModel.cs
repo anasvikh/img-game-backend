@@ -1,5 +1,4 @@
-﻿using Imaginarium.Enums;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace Imaginarium.ViewModels
 {
@@ -19,7 +18,7 @@ namespace Imaginarium.ViewModels
     public class UserResultViewModel
     {
         public string Name { get; set; }
-        public ChipEnum ChipId { get; set; }
+        public int ChipId { get; set; }
         public bool IsCardOwner { get; set; }
     }
 }

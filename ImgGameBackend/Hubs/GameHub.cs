@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Imaginarium.Models;
 using Microsoft.EntityFrameworkCore.Internal;
 using System.Linq;
-using Imaginarium.Enums;
 using Imaginarium.ViewModels;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
@@ -85,7 +84,7 @@ namespace Imaginarium.Hubs
             try
             {
                 var game = new Game();
-                game.AddUser(username, GenerateChipColor(game.Users), game.Users.Count);
+                game.AddUser(username, GenerateChipId(game.Users), game.Users.Count);
                 game.ActivePlayerName = username;
                 game.Creator = username;
                 _dbContext.Games.Add(game);
@@ -136,7 +135,7 @@ namespace Imaginarium.Hubs
                 return;
             }
 
-            game.AddUser(username, GenerateChipColor(game.Users), game.Users.Count);
+            game.AddUser(username, GenerateChipId(game.Users), game.Users.Count);
             _dbContext.Games.Update(game);
             _dbContext.SaveChanges();
 
@@ -319,7 +318,7 @@ namespace Imaginarium.Hubs
                     Username = user.Name,
                     RoundPoints = points,
                     TotalPoints = user.Points,
-                    ChipColor = user.ChipId
+                    ChipId = user.ChipId
                 });
 
             }
@@ -560,27 +559,25 @@ namespace Imaginarium.Hubs
             return newPlayCard;
         }
 
-        private ChipEnum GenerateChipColor(List<User> users)
+        private int GenerateChipId(List<User> users)
         {
-            var usedColors = users.Select(x => x.ChipId).ToList();
+            var usedIds = users.Select(x => x.ChipId).ToList();
 
-            var allColors = Enum.GetValues(typeof(ChipEnum)).
-                Cast<ChipEnum>()
+            var allIds = new List<int>() { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+
+            var unusedIds = allIds
+                .Where(x => !usedIds.Contains(x))
                 .ToList();
 
-            var unusedColors = allColors
-                .Where(x => !usedColors.Contains(x))
-                .ToList();
-
-            if (allColors.Count >= usedColors.Count) // без повторов
+            if (allIds.Count >= usedIds.Count) // без повторов
             {
-                int index = rnd.Next(unusedColors.Count() - 1);
-                return unusedColors[index];
+                int index = rnd.Next(unusedIds.Count() - 1);
+                return unusedIds[index];
             }
             else // с повторами (участников больше чем цветов)
             {
-                int index = rnd.Next(allColors.Count() - 1);
-                return unusedColors[index];
+                int index = rnd.Next(allIds.Count() - 1);
+                return unusedIds[index];
             }
         }
 

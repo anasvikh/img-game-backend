@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Imaginarium.Enums;
 
 namespace Imaginarium.ViewModels
 {
@@ -17,6 +14,6 @@ namespace Imaginarium.ViewModels
         public string Username { get; set; }
         public int RoundPoints { get; set; }
         public int TotalPoints { get; set; }
-        public ChipEnum ChipColor { get; set; }
+        public int ChipId { get; set; }
     }
 }
