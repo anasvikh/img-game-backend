@@ -36,7 +36,7 @@ namespace Imaginarium.Hubs
 
         public override async Task OnConnectedAsync()
         {
-            // GenerateCardsForNewCardsSet("Cassiopeia", 98, 11);
+            Logger.LogInformation($"{Context.ConnectionId} вошел в чат");
             await Clients.All.SendAsync("Notify", $"{Context.ConnectionId} вошел в чат");
             await base.OnConnectedAsync();
         }
@@ -47,19 +47,18 @@ namespace Imaginarium.Hubs
             await base.OnDisconnectedAsync(exception);
         }
 
-        public async Task CheckActiveGame(int gameId, string username)
+        public async Task CheckGameStatus(int gameId, string username)
         {
-            var isGameActive = _dbContext.Games
+            var game = await _dbContext.Games
                 .Include(x => x.Users)
-                .Any(x => x.Id == gameId && 
-                    x.Status == StatusType.Active && 
-                    x.Users.Any(u => u.Name == username)
-                );
+                .FirstOrDefaultAsync(x => x.Id == gameId && x.Users.Any(u => u.Name == username));
 
-            if (isGameActive)
+            if (game.Status == StatusType.Active || game.Status == StatusType.New)
                 await Groups.AddToGroupAsync(Context.ConnectionId, gameId.ToString());
 
-            await Clients.Caller.SendAsync("checkActiveGame", gameId, username, isGameActive);
+            var isCreator = username == game.Creator;
+
+            await Clients.Caller.SendAsync("CheckGameStatus", gameId, username, game.Status, isCreator );
         }
 
         public async Task GetCardSets(bool isSuperUser)
@@ -86,12 +85,9 @@ namespace Imaginarium.Hubs
             try
             {
                 var game = new Game();
-                game.Users.Add(new User()
-                {
-                    Name = username,
-                    ChipColor = GenerateChipColor(new List<User>())
-                });
+                game.AddUser(username, GenerateChipColor(game.Users), game.Users.Count);
                 game.ActivePlayerName = username;
+                game.Creator = username;
                 _dbContext.Games.Add(game);
 
                 var cardSets = await _dbContext.CardSets
@@ -113,11 +109,11 @@ namespace Imaginarium.Hubs
 
                 await Groups.AddToGroupAsync(Context.ConnectionId, game.Id.ToString());
 
-                await Clients.Caller.SendAsync("CreateGame", game.Id, username);
+                await Clients.Caller.SendAsync("CreateGame", game.Id);
             }
             catch(Exception ex)
             {
-                await Clients.Caller.SendAsync("CreateGame", null, null, ex);
+                await Clients.Caller.SendAsync("CreateGame", null, ex);
             }
 
         }
@@ -130,38 +126,42 @@ namespace Imaginarium.Hubs
 
             if (game == null)
             {
-                await Clients.Caller.SendAsync("JoinGame", gameId, null, false, $"Игра {gameId} не найдена");
+                await Clients.Caller.SendAsync("JoinGame", gameId, false, $"Игра {gameId} не найдена");
                 return;
             }
 
             if (game.Users.Any(u => u.Name == username))
             {
-                await Clients.Caller.SendAsync("JoinGame", gameId, null, false, $"Игрок {username} уже присоединился к игре. Выберите другое имя");
+                await Clients.Caller.SendAsync("JoinGame", gameId, false, $"Игрок {username} уже присоединился к игре. Выберите другое имя");
                 return;
             }
 
-            var chipColor = GenerateChipColor(game.Users);
-
-            game.AddUser(username, chipColor);
+            game.AddUser(username, GenerateChipColor(game.Users), game.Users.Count);
             _dbContext.Games.Update(game);
             _dbContext.SaveChanges();
 
             await Groups.AddToGroupAsync(Context.ConnectionId, game.Id.ToString());
 
-            var usersList = game.Users
-                .Select(x => x.Name);
-
-            await Clients.Caller.SendAsync("JoinGame", gameId, usersList, true, null);
-            await Clients.Group(game.Id.ToString()).SendAsync("JoinGame", gameId, usersList, null, null);
+            await Clients.Caller.SendAsync("JoinGame", gameId, true, null);
+            await Clients.Group(game.Id.ToString()).SendAsync("JoinGame", gameId, null, null);
         }
 
-        public async Task StartGame(int gameId)
+        public async Task StartGame(int gameId, User[] orderedUserList)
         {
             var game = _dbContext.Games
+                .Include(g => g.Users)
                 .FirstOrDefault(x => x.Id == gameId);
 
             game.Status = StatusType.Active;
             game.Round = 0;
+
+            game.Users.ForEach(user =>
+            {
+                user.Order = orderedUserList.FirstOrDefault(u => u.Name == user.Name).Order;
+                _dbContext.Entry(user).State = EntityState.Modified;
+            });
+
+            game.ActivePlayerName = game.Users.OrderBy(u => u.Order).First().Name;
 
             _dbContext.Games.Update(game);
             _dbContext.SaveChanges();
@@ -172,6 +172,17 @@ namespace Imaginarium.Hubs
 
             var message = $"Игра начинается. Количество игроков: {userCount}";
             await Clients.Group(game.Id.ToString()).SendAsync("StartGame", game.Id, message);
+        }
+
+        public async Task GetUsers(int gameId)
+        {
+            var usersList = await _dbContext.Users
+                .Where(x => x.GameId == gameId)
+                .OrderBy(x => x.Order)
+                .Select(x => new { x.Name, x.ChipId, x.Order })
+                .ToListAsync();
+
+            await Clients.Group(gameId.ToString()).SendAsync("GetUsers", usersList);
         }
 
         public async Task SelectCard(string username, int gameId, int playCardId)
@@ -192,7 +203,7 @@ namespace Imaginarium.Hubs
                 .Where(x => x.Round == game.Round && x.GameId == gameId)
                 .ToListAsync();
 
-            var isAllCardsSended = game.Users.Count == roundCards.Count;
+            var isAllCardsSended = game.Users.Count <= roundCards.Count; // todo: test <=
 
             await Clients.Group(game.Id.ToString()).SendAsync("SelectCard", isAllCardsSended, username);
         }
@@ -246,7 +257,7 @@ namespace Imaginarium.Hubs
             await Clients.Group(game.Id.ToString()).SendAsync("VoteForCard", isAllCardsSended, username, null);
         }
 
-        public async Task GetRoundResults(string username, int gameId)
+        public async Task GetRoundResults(int gameId)
         {
             var game = await _dbContext.Games
                 .Include(x => x.PlayCards)
@@ -288,7 +299,7 @@ namespace Imaginarium.Hubs
                     Username = user.Name,
                     RoundPoints = points,
                     TotalPoints = user.Points,
-                    ChipColor = user.ChipColor
+                    ChipColor = user.ChipId
                 });
 
             }
@@ -309,7 +320,7 @@ namespace Imaginarium.Hubs
                 game.VotedOnRoundCount = 0;
                 Logger.LogInformation($"Определение ведущего для игроков: {JsonConvert.SerializeObject(game.Users.Select(x => x.Name).ToList())}");
                 var activePlayerNumber = (game.Round % game.Users.Count).Value;
-                game.ActivePlayerName = game.Users.OrderBy(x => x.Id).ToList()[activePlayerNumber].Name;
+                game.ActivePlayerName = game.Users.OrderBy(x => x.Order).ToList()[activePlayerNumber].Name;
                 //var activePlayerIndex = game.Users.FindIndex(x => x.Name == game.ActivePlayerName);
                 //var nextActivePlayer = game.Users[activePlayerIndex++] ?? game.Users[0];
                 Logger.LogInformation($"Ведущий - {game.ActivePlayerName}(номер ведущего в списке - {activePlayerNumber}, раунд - {game.Round}, количество игроков - {game.Users.Count}");
@@ -342,6 +353,10 @@ namespace Imaginarium.Hubs
                 result = await GetRoundCards(gameId);
             }
 
+            game.RoundType = type;
+            _dbContext.Games.Update(game);
+            await _dbContext.SaveChangesAsync();
+
             await Clients.Caller.SendAsync("GetCards", result, game.ActivePlayerName);
         }
 
@@ -355,6 +370,9 @@ namespace Imaginarium.Hubs
             var userForRemove = game.Users
                 .FirstOrDefault(x => x.Name == username);
 
+            var needNewRound = false;
+            var needRoundResults = false;
+
             if (userForRemove != null)
             {
                 game.Users.Remove(userForRemove);
@@ -364,6 +382,60 @@ namespace Imaginarium.Hubs
             {
                 game.Status = StatusType.Ended;
             }
+            else if (game.RoundType == RoundType.Guessing)
+            {
+                needRoundResults = true;
+                // ведущий - раунд продолжается как обычно, голос ведущего добавляется, если еще не был учтен
+                // не ведущий - раунд продолжается как обычно, голос игрока отдается за свою карточку
+                var playCard = await _dbContext.PlayCards
+                    .FirstOrDefaultAsync(x => x.GameId == gameId && x.Username == userForRemove.Name);
+
+                if (playCard != null && !playCard.VotedUsers.Any(u => u == userForRemove.Name))
+                {
+                    playCard.VotedUsers.Add(userForRemove.Name);
+                    _dbContext.PlayCards.Update(playCard);
+
+                    game.VotedOnRoundCount++;
+                    _dbContext.Games.Update(game);
+
+                    await _dbContext.SaveChangesAsync();
+                }
+            }
+            else if (game.RoundType == RoundType.Choice)
+            {
+                if (game.ActivePlayerName == userForRemove.Name)
+                {
+                    // ведущий - сбрасываем раунд, карточки возвращаются к игрокам
+                    needNewRound = true;
+                    var roundPlayCards = _dbContext.PlayCards
+                        .Where(c => c.GameId == game.Id && c.Round == game.Round)
+                        .ToList();
+
+                    foreach (var card in roundPlayCards)
+                    {
+                        card.Round = null;
+                        _dbContext.Entry(card).State = EntityState.Modified;
+                    }
+                    _dbContext.SaveChanges();
+
+                    var activePlayerNumber = (game.Round % game.Users.Count).Value;
+                    game.ActivePlayerName = game.Users.OrderBy(x => x.Order).ToList()[activePlayerNumber].Name;
+                }
+                else
+                {
+                    // не ведущий - карточка игрока отбрасывается, раунд продолжается
+                    var userRoundPlayCard = _dbContext.PlayCards
+                        .Where(c => c.GameId == game.Id && c.Round == game.Round)
+                        .FirstOrDefault(c => c.Username == userForRemove.Name);
+
+                    if (userRoundPlayCard != null)
+                    {
+                        userRoundPlayCard.Round = null;
+                        _dbContext.PlayCards.Update(userRoundPlayCard);
+                        await _dbContext.SaveChangesAsync();
+                    }
+                }
+            }
 
             _dbContext.Games.Update(game);
             await _dbContext.SaveChangesAsync();
@@ -371,6 +443,12 @@ namespace Imaginarium.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, game.Id.ToString());
 
             await Clients.Caller.SendAsync("LeaveGame", true);
+
+            var isAllCardsSended = game.RoundType == RoundType.Choice ?
+                game.Users.Count <= game.PlayCards.Where(c => c.Round == game.Round).Count() :
+                game.Users.Count <= game.VotedOnRoundCount;
+
+            await Clients.Group(game.Id.ToString()).SendAsync("SomeoneLeaveGame", isAllCardsSended, game.RoundType, needNewRound, needRoundResults);
         }
 
         private async Task<List<PlayCardViewModel>> GetRoundCards(int gameId)
@@ -444,7 +522,7 @@ namespace Imaginarium.Hubs
                 .Where(x => selectedCardSetsIds.Contains(x.CardSetId) && !usedCards.Contains(x.Id))
                 .ToListAsync();
 
-            Logger.LogInformation($"Генерация карточи. unusedCard.Count: {unusedCards.Count}");
+            Logger.LogInformation($"Генерация карточки. unusedCard.Count: {unusedCards.Count} {Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
 
             int index = rnd.Next(unusedCards.Count() - 1);
             var randomCard = unusedCards[index];
@@ -461,7 +539,7 @@ namespace Imaginarium.Hubs
 
         private ChipColorEnum GenerateChipColor(List<User> users)
         {
-            var usedColors = users.Select(x => x.ChipColor).ToList();
+            var usedColors = users.Select(x => x.ChipId).ToList();
 
             var allColors = Enum.GetValues(typeof(ChipColorEnum)).
                 Cast<ChipColorEnum>()

@@ -11,6 +11,7 @@ namespace Imaginarium.Models
         public int Id { get; set; }
         public StatusType Status { get; set; } = StatusType.New;
         public int? Round { get; set; }
+        public RoundType RoundType { get; set; }
         public int VotedOnRoundCount { get; set; }
         public List<User> Users { get; set; } = new List<User>();
 
@@ -19,18 +20,20 @@ namespace Imaginarium.Models
         public virtual ICollection<CardSetGame> CardSetGames { get; set; }
 
         public string ActivePlayerName { get; set; }
+        public string Creator { get; set; }
 
         public Game()
         {
             CardSetGames = new List<CardSetGame>();
         }
 
-        public void AddUser(string username, ChipColorEnum color)
+        public void AddUser(string username, ChipColorEnum color, int order)
         {
             Users.Add(new User()
             {
                 Name = username,
-                ChipColor = color
+                ChipId = color,
+                Order = order
             });
         }
     }
@@ -40,5 +43,11 @@ namespace Imaginarium.Models
         New,
         Active,
         Ended
+    }
+
+    public enum RoundType
+    {
+        Choice,
+        Guessing,
     }
 }

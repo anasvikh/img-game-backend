@@ -12,7 +12,8 @@ namespace Imaginarium.Models
         public string Name { get; set; }
         public string ConnectionId { get; set; }
         public int Points { get; set; }
-        public ChipColorEnum ChipColor { get; set; }
+        public ChipColorEnum ChipId { get; set; }
+        public int Order { get; set; }
 
         public int GameId { get; set; }
         public Game Game { get; set; }

@@ -4,15 +4,17 @@ using System.Collections.Generic;
 using Imaginarium.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace Imaginarium.Migrations
 {
     [DbContext(typeof(ImaginariumContext))]
-    partial class ImaginariumContextModelSnapshot : ModelSnapshot
+    [Migration("20210324222240_AddRoundTypeForGame")]
+    partial class AddRoundTypeForGame
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -74,8 +76,6 @@ namespace Imaginarium.Migrations
 
                     b.Property<string>("ActivePlayerName");
 
-                    b.Property<string>("Creator");
-
                     b.Property<int?>("Round");
 
                     b.Property<int>("RoundType");
@@ -121,15 +121,13 @@ namespace Imaginarium.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd();
 
-                    b.Property<int>("ChipId");
+                    b.Property<int>("ChipColor");
 
                     b.Property<string>("ConnectionId");
 
                     b.Property<int>("GameId");
 
                     b.Property<string>("Name");
-
-                    b.Property<int>("Order");
 
                     b.Property<int>("Points");
 

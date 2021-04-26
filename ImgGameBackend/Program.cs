@@ -30,7 +30,8 @@ namespace Imaginarium
 
             CreateWebHostBuilder(args).Build().Run();
 
-            Log.Information("Starting web host");
+            Log.Information("Starting web host.");
+            Log.Information($"Environment - ${Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")}");
             var host = CreateWebHostBuilder(args).Build();
             using (var scope = host.Services.CreateScope())
             {
