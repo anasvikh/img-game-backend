@@ -81,9 +81,9 @@ namespace Imaginarium.Hubs
                 {
                     x.Id,
                     Value = x.NameRus
-                }).OrderBy(x => x.Value)
+                })
             })
-            .OrderBy(x => x.GroupName)
+            .OrderByDescending(x => x.GroupName.Length)
             .ToList();
 
             await Clients.Caller.SendAsync("GetCardSets", result);
