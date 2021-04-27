@@ -83,7 +83,7 @@ namespace Imaginarium.Hubs
                     Value = x.NameRus
                 })
             })
-            .OrderByDescending(x => x.GroupName.Length)
+            .OrderByDescending(x => x.GroupName?.Length)
             .ToList();
 
             await Clients.Caller.SendAsync("GetCardSets", result);
