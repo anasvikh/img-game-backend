@@ -11,6 +11,7 @@ namespace Imaginarium.Models
         public string NameEng { get; set; }
         public string NameRus { get; set; }
         public bool IsAvailable { get; set; }
+        public string Group { get; set; }
 
         public virtual ICollection<Card> Cards { get; set; }
 

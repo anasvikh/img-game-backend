@@ -73,8 +73,17 @@ namespace Imaginarium.Hubs
             }
 
             var result = cardSets
-                    .Select(x => new { x.Id, Value = x.NameRus })
-                    .ToList();
+                    .GroupBy(s => s.Group)
+            .Select(g => new
+            {
+                GroupName = g.Key,
+                Items = g.Select(x => new
+                {
+                    x.Id,
+                    Value = x.NameRus
+                })
+            })
+            .ToList();
 
             await Clients.Caller.SendAsync("GetCardSets", result);
         }
