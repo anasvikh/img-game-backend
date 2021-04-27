@@ -81,7 +81,7 @@ namespace Imaginarium.Hubs
                 {
                     x.Id,
                     Value = x.NameRus
-                })
+                }).OrderBy(x => x.Value)
             })
             .OrderBy(x => x.GroupName)
             .ToList();
